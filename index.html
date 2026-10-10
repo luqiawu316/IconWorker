@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>网站图标获取器 · Favicon Finder</title>
+<meta name="description" content="纯前端 favicon 工具：输入网址自动探测网站图标，或粘贴网页源码由浏览器在本机解析出其中的图标地址。" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<main class="page">
+
+  <header class="hero">
+    <h1 class="hero__title">网站图标获取器</h1>
+    <p class="hero__sub">输入网址探测图标，或粘贴网页源码在本机解析出图标地址。</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="功能切换">
+    <button class="tab" type="button" role="tab" id="tabAuto"
+            aria-controls="paneAuto" aria-selected="true">自动探测网站</button>
+    <button class="tab" type="button" role="tab" id="tabSource"
+            aria-controls="paneSource" aria-selected="false">网页源码解析</button>
+  </nav>
+
+  <!-- ==================================================================
+       功能一：自动探测网站获取图标（会向目标站点发起请求）
+       ================================================================== -->
+  <div class="pane" id="paneAuto" role="tabpanel" aria-labelledby="tabAuto">
+
+    <form class="search" id="searchForm" autocomplete="off" novalidate>
+      <label class="sr-only" for="urlInput">网站地址或域名</label>
+      <div class="search__row">
+        <input
+          id="urlInput"
+          class="search__input"
+          type="text"
+          inputmode="url"
+          spellcheck="false"
+          autocapitalize="off"
+          autocorrect="off"
+          placeholder="example.com　或　https://example.com"
+          aria-describedby="searchHint"
+        />
+        <button class="btn btn--primary" type="submit" id="submitBtn">获取图标</button>
+      </div>
+
+      <p class="hint" id="searchHint">可省略协议，默认按 https 处理</p>
+
+      <fieldset class="options">
+        <legend class="options__legend">探测来源</legend>
+
+        <div class="options__grid">
+        <label class="toggle" for="optHtml" title="读取页面里的 link rel=&quot;icon&quot;、apple-touch-icon 等声明">
+          <input type="checkbox" id="optHtml" checked />
+          <span>页面声明</span>
+        </label>
+
+        <label class="toggle" for="optManifest" title="读取 Web App Manifest 与 browserconfig.xml">
+          <input type="checkbox" id="optManifest" checked />
+          <span>Manifest</span>
+        </label>
+
+        <label class="toggle" for="optPageImages" title="前面全部落空时，用页面里的 logo / og:image 兜底">
+          <input type="checkbox" id="optPageImages" checked />
+          <span>页面图片兜底</span>
+        </label>
+
+        <label class="toggle toggle--optin" for="optArchive" title="向 web.archive.org 请求该站点的存档快照">
+          <input type="checkbox" id="optArchive" />
+          <span>存档快照<em>· 第三方</em></span>
+        </label>
+
+        <label class="toggle toggle--optin" for="optThirdParty" title="把域名发送给 Google S2 / DuckDuckGo 取图标">
+          <input type="checkbox" id="optThirdParty" />
+          <span>第三方服务<em>· 外发域名</em></span>
+        </label>
+        </div>
+      </fieldset>
+
+      <div class="examples" id="examples">
+        <span class="examples__label">示例：</span>
+        <button class="chip" type="button" data-url="vuejs.org">vuejs.org</button>
+        <button class="chip" type="button" data-url="rust-lang.org">rust-lang.org</button>
+        <button class="chip" type="button" data-url="react.dev">react.dev</button>
+        <button class="chip" type="button" data-url="nodejs.org">nodejs.org</button>
+        <button class="chip" type="button" data-url="github.com">github.com</button>
+        <button class="chip" type="button" data-url="example.com">example.com</button>
+        <button class="chip" type="button" data-url="not-a-real-domain-xxx.invalid">无效域名</button>
+      </div>
+    </form>
+
+    <p class="alert alert--error" id="errorBox" role="alert" hidden></p>
+
+    <section class="panel panel--status" id="statusPanel" hidden aria-live="polite">
+      <span class="spinner" id="spinner" aria-hidden="true"></span>
+      <span class="panel__text" id="statusText">准备中…</span>
+    </section>
+
+    <section class="card card--result" id="resultPanel" hidden>
+      <div class="card__media">
+        <div class="icon-box icon-box--lg">
+          <div class="icon-slot" id="iconSlotLg"></div>
+        </div>
+        <div class="icon-meta">
+          <span class="icon-meta__label">16px 实际效果</span>
+          <div class="icon-box icon-box--sm">
+            <img class="icon-mini" id="iconMini" alt="图标 16 像素预览" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card__body">
+        <h2 class="card__title" id="resultTitle">已找到图标</h2>
+
+        <dl class="kv">
+          <div class="kv__row">
+            <dt>来源 URL</dt>
+            <dd><a id="resultUrl" class="link" href="#" target="_blank" rel="noopener noreferrer"></a></dd>
+          </div>
+          <div class="kv__row">
+            <dt>尺寸</dt>
+            <dd id="resultSize">—</dd>
+          </div>
+          <div class="kv__row">
+            <dt>格式</dt>
+            <dd id="resultFormat">—</dd>
+          </div>
+          <div class="kv__row">
+            <dt>来源类型</dt>
+            <dd id="resultSource">—</dd>
+          </div>
+          <div class="kv__row">
+            <dt>验真</dt>
+            <dd id="resultVerify">—</dd>
+          </div>
+          <div class="kv__row">
+            <dt>候选命中</dt>
+            <dd id="resultCount">—</dd>
+          </div>
+        </dl>
+
+        <p class="card__note" id="resultNote" hidden></p>
+
+        <div class="card__actions">
+          <button class="btn btn--primary" type="button" id="downloadBtn">下载图标</button>
+          <button class="btn" type="button" id="copyBtn">复制 URL</button>
+          <a class="btn" id="openBtn" href="#" target="_blank" rel="noopener noreferrer">新标签页打开</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="altPanel" hidden>
+      <h2 class="panel__title">其他可用候选</h2>
+      <div class="alt-grid" id="altGrid"></div>
+    </section>
+
+    <section class="panel" id="warnPanel" hidden>
+      <h2 class="panel__title">提示与限制</h2>
+      <ul class="notes" id="warnList"></ul>
+    </section>
+
+    <section class="panel" id="attemptsPanel" hidden>
+      <h2 class="panel__title">探测明细</h2>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">候选来源</th>
+              <th scope="col">地址</th>
+              <th scope="col">结果</th>
+              <th scope="col">尺寸</th>
+              <th scope="col">验真</th>
+            </tr>
+          </thead>
+          <tbody id="attemptsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <details class="about">
+      <summary>关于本工具的已知限制</summary>
+      <ul class="notes">
+        <li><b>浏览器跨域策略（CORS）是最大的限制。</b>多数站点不发 <code>Access-Control-Allow-Origin</code>，因此常常拿不到 HTTP 状态码，只能以「图片能否显示」作为判据；读不到状态码时<b>无法区分「404 错误页」与「真的没有图标」</b>。</li>
+        <li><b>下载要拿得到字节才行。</b>跨域地址上的 <code>download</code> 属性会被浏览器忽略，所以字节先试直连、被拦下时改走同源代理 <code>/api/icon</code>（Cloudflare Pages Function）。本地双击打开或平台不支持 Functions 时没有代理，只能复制地址后另存。</li>
+        <li>扩展名与 <code>Content-Type</code> 都不可信（实测有站点的 <code>/favicon.ico</code> 内容是 PNG）；部分站点对任意路径都返回 200 页面，只看状态码会误报。</li>
+      </ul>
+    </details>
+
+  </div>
+
+  <!-- ==================================================================
+       功能二：网页源码解析（用户自行提供源码，本机解析，不发起任何请求）
+       ================================================================== -->
+  <div class="pane" id="paneSource" role="tabpanel" aria-labelledby="tabSource" hidden>
+
+    <section class="panel">
+      <h2 class="panel__title">网页源码解析</h2>
+
+      <p class="src-tool__intro">
+        粘贴网页源码，浏览器在本机解析出其中的图标地址；解析结果会直接加载为预览图。
+      </p>
+
+      <div class="field">
+        <label class="field__label" for="srcBaseInput">
+          页面地址<span class="req">必填</span>
+        </label>
+        <input
+          class="input-text"
+          id="srcBaseInput"
+          type="text"
+          required
+          aria-required="true"
+          spellcheck="false"
+          autocomplete="off"
+          autocapitalize="off"
+          placeholder="https://example.com/some/page.html"
+          aria-describedby="srcBaseHint"
+        />
+        <span class="field__hint" id="srcBaseHint">
+          用于补全源码里的相对地址；源码自带绝对 <code>&lt;base href&gt;</code> 时优先用它。
+        </span>
+        <span class="field__hint is-invalid" id="srcBaseError" role="alert" hidden></span>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="srcInput">网页源代码</label>
+        <textarea
+          class="code-area"
+          id="srcInput"
+          spellcheck="false"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          wrap="off"
+          placeholder="在此粘贴网页源代码"
+          aria-describedby="srcInputHint"
+        ></textarea>
+        <span class="field__hint" id="srcInputHint">
+          完整源码或片段均可，单次上限约 200 万字符。
+        </span>
+      </div>
+
+      <div class="src-tool__bar">
+        <button class="btn btn--primary" type="button" id="srcParseBtn">解析源码</button>
+        <button class="btn" type="button" id="srcSampleBtn">填入示例</button>
+        <button class="btn" type="button" id="srcClearBtn">清空</button>
+        <span class="src-tool__meta" id="srcSizeMeta">0 字符</span>
+      </div>
+
+      <p class="alert alert--error" id="srcError" role="alert" hidden></p>
+    </section>
+
+    <section class="panel" id="srcResultPanel" hidden>
+      <h2 class="panel__title">解析结果</h2>
+
+      <div class="src-state">
+        <span class="badge badge--ok" id="srcResultBadge">已解析</span>
+        <span class="src-state__text" id="srcResultSummary"></span>
+      </div>
+
+      <dl class="kv kv--compact" id="srcResultKv"></dl>
+
+      <div id="srcGroups"></div>
+
+      <div class="card__actions" id="srcActions" hidden>
+        <button class="btn" type="button" id="srcCopyAllBtn">复制全部图标地址</button>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="foot">
+    自动探测会请求目标站点；源码解析的网络只用于加载预览图；下载经同源代理 <code>/api/icon</code> 取回字节。
+  </footer>
+
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- 代理环境检测胶囊：固定在右下角，点击重新检测 -->
+<button class="proxy-capsule" id="proxyCapsule" type="button" data-state="checking" aria-label="代理环境检测">
+  <span class="proxy-capsule__dot" id="proxyDot" aria-hidden="true"></span>
+  <span class="proxy-capsule__label" id="proxyLabel">检测中…</span>
+</button>
+
+<noscript>
+  <p class="alert alert--error">本工具需要启用 JavaScript 才能运行。</p>
+</noscript>
+
+<!-- 「填入示例」用的示范源码：以 text/plain 存放，浏览器不执行也不显示 -->
+<script type="text/plain" id="srcSampleSource">
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>示例页面 · Example</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#2563eb">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="msapplication-TileImage" content="/mstile-150x150.png">
+  <meta property="og:image" content="/social-card.png">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232563eb'/%3E%3Cpath d='M9 23V9h3.4l4.1 6.2L20.6 9H24v14h-3v-8.4l-4.5 6.6-4.5-6.6V23z' fill='%23fff'/%3E%3C/svg%3E">
+</head>
+<body>
+  <img src="/img/logo-header.png" alt="Example Logo">
+  <img src="https://cdn.example.com/brand-logo-wide.png" alt="brand">
+  <a href="/download">Download</a>
+</body>
+</html>
+</script>
+
+<script src="js/url-utils.js"></script>
+<script src="js/icon-probe.js"></script>
+<script src="js/icon-parse.js"></script>
+<script src="js/download.js"></script>
+<script src="js/favicon-finder.js"></script>
+<script src="js/app.js"></script>
+<script src="js/source-tool.js"></script>
+<script src="js/proxy-check.js"></script>
+</body>
+</html>

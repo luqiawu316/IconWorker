@@ -1,0 +1,5 @@
+# 上传到 Cloudflare Pages 时排除的文件（gitignore 语法，新版 wrangler 支持）
+# 若不生效，这些文件会作为普通静态资源一并上传；其中不含密钥或个人信息。
+.workbuddy/
+wrangler.toml
+.assetsignore

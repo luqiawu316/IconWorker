@@ -1,0 +1,11 @@
+# Cloudflare Pages 配置（可选但推荐）
+#
+# 有本文件后：npx wrangler pages deploy        ← 无需参数，输出目录取下面这一项
+# 没有本文件：npx wrangler pages deploy .      ← 效果相同
+#
+# functions/ 目录由 wrangler 自动识别，文件路径即路由：
+#   functions/api/icon.js  →  /api/icon
+
+name = "favicon-finder"
+pages_build_output_dir = "."
+compatibility_date = "2026-01-01"
